@@ -1,0 +1,42 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# OS
+Thumbs.db
+
+# Local debug & scratch scripts
+debug.js
+scratch/
+
+# Blender / DCC source files (runtime uses only GLB/GLTF/OBJ/JPG/PNG/HDR)
+*.blend
+*.blend1
+*.usdc
+*.usda
+*.mtlx
+*.tres
+*.fbx
+
+# Generated artifacts
+TODO.html
+TODO_files/
+tests/out/
+
+# Generated report build artifacts (from docs/report/report.qmd)
+docs/report/REPORT.html
+docs/report/REPORT_files/
+
+# Ad-hoc screenshots
+screenshot-*.png

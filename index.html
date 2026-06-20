@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Luna Park — 3D Amusement Park</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: system-ui, sans-serif;
+      color: #fff;
+    }
+    #c {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    #hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      width: 300px;
+      padding: 20px;
+      background: rgba(12, 15, 22, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 10px;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #fff;
+      pointer-events: none;
+      user-select: none;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      transition: gap 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #hud::-webkit-scrollbar { width: 4px; }
+    #hud::-webkit-scrollbar-track { background: transparent; }
+    #hud::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+    #hud.collapsed {
+      gap: 0;
+      padding-bottom: 15px;
+    }
+    #hud * {
+      pointer-events: auto;
+    }
+    @media (max-width: 480px) {
+      #hud {
+        width: auto;
+        right: 20px;
+      }
+    }
+    .hud-title {
+      font-weight: 700;
+      margin: 0;
+      font-size: 12px;
+      color: #ffa01c;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 0.3s ease, padding-bottom 0.3s ease;
+    }
+    #hud.collapsed .hud-title {
+      border-bottom-color: rgba(255, 255, 255, 0);
+      padding-bottom: 0;
+    }
+    .hud-title-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .hud-toggle-btn {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s ease, background-color 0.2s ease;
+      border-radius: 4px;
+    }
+    .hud-toggle-btn:hover {
+      color: #ffa01c;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .chevron-icon {
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #hud.collapsed .chevron-icon {
+      transform: rotate(180deg);
+    }
+    .ferris-wheel-icon {
+      color: #ffa01c;
+      flex-shrink: 0;
+    }
+    .wheel-rotate {
+      transform-origin: 12px 10px;
+      animation: spin-slow 15s linear infinite;
+    }
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .hud-body {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      max-height: 800px;
+      opacity: 1;
+      transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+      overflow-y: auto;
+    }
+    #hud.collapsed .hud-body {
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .hud-controls-grid {
+      display: grid;
+      grid-template-columns: 75px 1fr 50px;
+      align-items: center;
+      gap: 12px 14px;
+    }
+    .hud-controls-grid label {
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.85);
+    }
+    
+    /* Custom Range Slider Styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+      margin: 0;
+      cursor: pointer;
+    }
+    input[type="range"]:focus {
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(to right, #ffa01c var(--value-percent, 0%), rgba(255, 255, 255, 0.1) var(--value-percent, 0%));
+      border-radius: 2px;
+      border: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      height: 12px;
+      width: 12px;
+      border-radius: 50%;
+      background: #ffa01c;
+      cursor: pointer;
+      -webkit-appearance: none;
+      margin-top: -4px;
+      border: none;
+      box-shadow: 0 0 6px rgba(255, 160, 28, 0.8);
+      transition: transform 0.15s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+    }
+    
+    /* Firefox Support */
+    input[type="range"]::-moz-range-track {
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(to right, #ffa01c var(--value-percent, 0%), rgba(255, 255, 255, 0.1) var(--value-percent, 0%));
+      border-radius: 2px;
+      border: none;
+    }
+    input[type="range"]::-moz-range-thumb {
+      height: 12px;
+      width: 12px;
+      border: none;
+      border-radius: 50%;
+      background: #ffa01c;
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(255, 160, 28, 0.8);
+      transition: transform 0.15s;
+    }
+    input[type="range"]::-moz-range-thumb:hover {
+      transform: scale(1.25);
+    }
+
+    .control-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #ffd9a8;
+      text-align: right;
+      font-weight: bold;
+    }
+
+    /* Custom Toggle Switch Styling */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 20px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .toggle-slider::before {
+      content: "";
+      position: absolute;
+      height: 12px;
+      width: 12px;
+      left: 3px;
+      top: 3px;
+      background-color: #fff;
+      border-radius: 50%;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+    .toggle-switch:hover .toggle-slider {
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background-color: #ffa01c;
+      border-color: rgba(255, 160, 28, 0.4);
+      box-shadow: 0 0 8px rgba(255, 160, 28, 0.3);
+    }
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(18px);
+      background-color: #fff;
+    }
+    
+    .state-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+      text-align: right;
+      font-weight: bold;
+    }
+
+    /* Custom Color Picker Pill Styling */
+    .color-picker-wrapper {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 48px;
+      height: 20px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      overflow: hidden;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .color-picker-wrapper:hover {
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: scale(1.05);
+    }
+    .color-picker-wrapper input[type="color"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      padding: 0;
+      margin: 0;
+      border: none;
+    }
+    .color-pill-preview {
+      display: block;
+      width: 100%;
+      height: 100%;
+      transition: background-color 0.2s;
+    }
+    .color-hex-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.55);
+      text-align: right;
+    }
+
+    /* Accordion / Help section styling */
+    .hud-footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 12px;
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .accordion-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      color: rgba(255, 255, 255, 0.7);
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+      outline: none;
+    }
+    .accordion-header:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.15);
+      color: #ffa01c;
+    }
+    .accordion-icon {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    #helpOverlay {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 300px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      padding: 20px;
+      background: rgba(12, 15, 22, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 10px;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #fff;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-8px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    #helpOverlay.open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    #helpOverlay::-webkit-scrollbar { width: 4px; }
+    #helpOverlay::-webkit-scrollbar-track { background: transparent; }
+    #helpOverlay::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+    .help-overlay-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 700;
+      font-size: 12px;
+      color: #ffa01c;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 10px;
+    }
+    .help-overlay-close {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 16px;
+      line-height: 1;
+      transition: color 0.2s, background 0.2s;
+    }
+    .help-overlay-close:hover {
+      color: #ffa01c;
+      background: rgba(255,255,255,0.08);
+    }
+
+    #speedPanel, #helpPanel {
+      display: flex !important;
+      flex-direction: column;
+      padding-right: 4px;
+
+      max-height: 0;
+      opacity: 0;
+      margin-top: 0;
+      overflow: hidden;
+      pointer-events: none;
+      transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.2s ease,
+                  margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #speedPanel { gap: 4px; }
+    #helpPanel  { gap: 12px; }
+
+    #speedPanel[style*="display: block"], #helpPanel[style*="display: block"] {
+      max-height: 300px;
+      opacity: 1;
+      margin-top: 10px;
+      pointer-events: auto;
+      overflow-y: auto;
+    }
+    #speedPanel::-webkit-scrollbar, #helpPanel::-webkit-scrollbar {
+      width: 4px;
+    }
+    #speedPanel::-webkit-scrollbar-track, #helpPanel::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #speedPanel::-webkit-scrollbar-thumb, #helpPanel::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+    #speedPanel::-webkit-scrollbar-thumb:hover, #helpPanel::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 160, 28, 0.5);
+    }
+    .help-section {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.65);
+      line-height: 1.4;
+    }
+    .help-section strong {
+      color: #ffa01c;
+      display: block;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .help-section ul {
+      margin: 0;
+      padding-left: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    kbd {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+      padding: 1px 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #fff;
+    }
+    /* ===== Loading screen ===== */
+    .time-arc-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 4px 0 0;
+    }
+    #timeArc {
+      width: 120px;
+      height: 65px;
+    }
+
+    #loader {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(125% 95% at 50% 16%, #241a3d 0%, #150f26 38%, #0a0713 68%, #050409 100%);
+      transition: opacity 0.8s ease, visibility 0.8s ease;
+      z-index: 10;
+      overflow: hidden;
+    }
+    #loader.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    #loader::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(125% 100% at 50% 48%, transparent 52%, rgba(0,0,0,0.6) 100%);
+    }
+
+    /* drifting bokeh fair-lights */
+    #loader .bokeh { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+    #loader .bokeh i {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(7px);
+      opacity: 0;
+      animation: bokeh-float linear infinite, bokeh-twinkle ease-in-out infinite;
+    }
+    @keyframes bokeh-float {
+      from { transform: translateY(28px); }
+      to   { transform: translateY(-46px); }
+    }
+    @keyframes bokeh-twinkle {
+      0%, 100% { opacity: 0.04; }
+      50%      { opacity: 0.5; }
+    }
+
+    #loader .stage {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ferris wheel */
+    #loader .wheel-wrap {
+      width: 196px;
+      height: 206px;
+      filter: drop-shadow(0 0 20px rgba(255,180,90,0.28));
+    }
+    #loader .spin {
+      transform-box: view-box;
+      transform-origin: 110px 110px;
+      animation: ferris-spin 9s linear infinite;
+    }
+    @keyframes ferris-spin { to { transform: rotate(360deg); } }
+    #loader .cabin {
+      transform-box: view-box;
+      transform-origin: 110px 110px;
+      animation: ferris-orbit 9s linear infinite;
+    }
+    @keyframes ferris-orbit {
+      from { transform: rotate(var(--a0)) translateY(-82px) rotate(calc(-1 * var(--a0))); }
+      to   { transform: rotate(calc(var(--a0) + 360deg)) translateY(-82px) rotate(calc(-1 * var(--a0) - 360deg)); }
+    }
+    #loader .rim-light { animation: bulb 1.8s ease-in-out infinite; transform-origin: center; }
+    @keyframes bulb { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+    /* title + meta */
+    #loader .title {
+      margin-top: 30px;
+      font-size: 30px;
+      font-weight: 600;
+      letter-spacing: 0.42em;
+      text-indent: 0.42em;
+      background: linear-gradient(180deg, #ffffff 0%, #ffd9a8 52%, #ff9ec4 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+      text-shadow: 0 0 26px rgba(255,180,120,0.25);
+    }
+    #loader .subtitle {
+      margin-top: 11px;
+      font-size: 11px;
+      letter-spacing: 0.5em;
+      text-indent: 0.5em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.42);
+    }
+    #loader .bar {
+      position: relative;
+      margin-top: 34px;
+      width: 240px;
+      height: 4px;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.10);
+      overflow: hidden;
+    }
+    #loader .bar-fill {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 0%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #ffb347, #ff7eb3, #ffd194);
+      box-shadow: 0 0 12px rgba(255,150,120,0.6);
+      transition: width 0.25s ease;
+    }
+    #loader .bar-fill::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.75), transparent);
+      transform: translateX(-100%);
+      animation: shimmer 1.6s ease-in-out infinite;
+    }
+    @keyframes shimmer { to { transform: translateX(280px); } }
+    #loader .status {
+      margin-top: 15px;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      color: rgba(255,255,255,0.55);
+      font-variant-numeric: tabular-nums;
+    }
+    #loader .status b { color: rgba(255,225,190,0.9); font-weight: 600; }
+
+    @media (prefers-reduced-motion: reduce) {
+      #loader .spin, #loader .cabin, #loader .rim-light,
+      #loader .bar-fill::after, #loader .bokeh i { animation: none !important; }
+    }
+
+    /* Shooting Gallery UI */
+    #shootScore, #shootTimer {
+      position: fixed;
+      top: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.8), 0 0 20px rgba(255,160,28,0.5);
+      pointer-events: none;
+      user-select: none;
+      display: none;
+      z-index: 20;
+    }
+    #shootScore {
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    #shootTimer {
+      right: 40px;
+      color: #ffaa44;
+    }
+    #crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 24px;
+      height: 24px;
+      pointer-events: none;
+      display: none;
+      z-index: 20;
+    }
+    #crosshair::before, #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 0 4px rgba(0,0,0,0.8);
+    }
+    #crosshair::before {
+      width: 2px;
+      height: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    #crosshair::after {
+      width: 100%;
+      height: 2px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/",
+      "@tweenjs/tween.js": "https://unpkg.com/@tweenjs/tween.js@23.1.3/dist/tween.esm.js"
+    }
+  }
+  </script>
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="crosshair"></div>
+  <div id="shootScore">Score: 0</div>
+  <div id="shootTimer">Time: 30s</div>
+  <div id="hud">
+    <div class="hud-title" id="hudTitle">
+      <div class="hud-title-left">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="ferris-wheel-icon">
+          <!-- Support stand (static) -->
+          <path d="M12 10L8 21M12 10L16 21M7 21H17" />
+          <!-- Rotating wheel -->
+          <g class="wheel-rotate">
+            <circle cx="12" cy="10" r="7" />
+            <path d="M12 3v14M5 10h14M7.05 5.05l9.9 9.9M7.05 14.95l9.9-9.9" />
+            <circle cx="12" cy="3" r="1.2" fill="currentColor" />
+            <circle cx="19" cy="10" r="1.2" fill="currentColor" />
+            <circle cx="12" cy="17" r="1.2" fill="currentColor" />
+            <circle cx="5" cy="10" r="1.2" fill="currentColor" />
+            <circle cx="16.95" cy="5.05" r="1.2" fill="currentColor" />
+            <circle cx="7.05" cy="14.95" r="1.2" fill="currentColor" />
+            <circle cx="16.95" cy="14.95" r="1.2" fill="currentColor" />
+            <circle cx="7.05" cy="5.05" r="1.2" fill="currentColor" />
+          </g>
+          <!-- Center hub -->
+          <circle cx="12" cy="10" r="1.2" fill="currentColor" />
+        </svg>
+        <span>Luna Park — Interactive Controls</span>
+      </div>
+      <div style="display:flex;gap:2px;">
+        <button id="helpToggleBtn" class="hud-toggle-btn" type="button" aria-label="Toggle Help" style="font-weight:700;font-size:14px;line-height:1;">?</button>
+        <button class="hud-toggle-btn" type="button" aria-label="Toggle HUD">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="chevron-icon">
+            <polyline points="18 15 12 9 6 15"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="hud-body">
+      <div class="hud-controls-grid">
+        <!-- Wind Row -->
+        <label for="wind">Wind:</label>
+        <input id="wind" type="range" min="0" max="3" step="0.05" value="1" />
+        <span id="windVal" class="control-value">1.00</span>
+
+        <!-- Time Row -->
+        <label for="timeOfDay">Time:</label>
+        <input id="timeOfDay" type="range" min="0" max="24" step="0.1" value="12" />
+        <span id="timeVal" class="control-value">12:00</span>
+
+        <!-- Auto Time Row -->
+        <label for="autoTime">Auto Time:</label>
+        <label class="toggle-switch">
+          <input id="autoTime" type="checkbox" checked />
+          <span class="toggle-slider"></span>
+        </label>
+        <span id="autoStateVal" class="state-val">ON</span>
+
+        <!-- Lights Row -->
+        <label for="lightColor">Lights:</label>
+        <div class="color-picker-wrapper">
+          <input id="lightColor" type="color" value="#ffdd88" />
+          <span class="color-pill-preview" id="colorPillPreview"></span>
+        </div>
+        <span id="colorHexVal" class="color-hex-val">#FFDD88</span>
+      </div>
+
+      <div class="time-arc-wrap">
+        <canvas id="timeArc" width="240" height="130"></canvas>
+      </div>
+
+      <div class="hud-footer">
+        <div class="accordion-item">
+          <button id="speedBtn" class="accordion-header">
+            <span>Ride Speed</span>
+            <span class="accordion-icon">+</span>
+          </button>
+          <div id="speedPanel" style="display: none;">
+            <div class="hud-controls-grid" id="rideSpeeds">
+              <label>Sky Wheel:</label>
+              <input data-ride="ferrisWheel" type="range" min="0.2" max="1.5" step="0.05" value="1" class="ride-speed-slider" />
+              <span class="control-value ride-speed-val">1.00</span>
+              <label>Carousel:</label>
+              <input data-ride="carousel" type="range" min="0.2" max="1.5" step="0.05" value="1" class="ride-speed-slider" />
+              <span class="control-value ride-speed-val">1.00</span>
+              <label>Tagada:</label>
+              <input data-ride="tagada" type="range" min="0.2" max="1.5" step="0.05" value="1" class="ride-speed-slider" />
+              <span class="control-value ride-speed-val">1.00</span>
+              <label>Twister:</label>
+              <input data-ride="coaster" type="range" min="0.2" max="1.5" step="0.05" value="1" class="ride-speed-slider" />
+              <span class="control-value ride-speed-val">1.00</span>
+              <label>Railway:</label>
+              <input data-ride="train" type="range" min="0.2" max="1.5" step="0.05" value="1" class="ride-speed-slider" />
+              <span class="control-value ride-speed-val">1.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="helpOverlay">
+    <div class="help-overlay-header">
+      <span>Help &amp; Keybindings</span>
+      <button id="helpOverlayClose" class="help-overlay-close" aria-label="Close help">&times;</button>
+    </div>
+    <div class="help-section">
+      <strong>Mouse Navigation</strong>
+      <ul>
+        <li>Drag: Orbit View</li>
+        <li>Scroll: Zoom (outside rides)</li>
+        <li>Right-Drag: Pan View</li>
+        <li>Left Click on Object: Fly to Object</li>
+      </ul>
+    </div>
+    <div class="help-section">
+      <strong>Shortcuts &amp; Interactions</strong>
+      <ul>
+        <li><kbd>1</kbd> - <kbd>6</kbd>: Ride Cam Presets</li>
+        <li>Click ride button (bottom bar): Enter FPV</li>
+        <li><kbd>Space</kbd>: Pause/Resume Time</li>
+        <li>Click Panel: Turn Ride On/Off</li>
+        <li>Click Lamppost: Toggle Light On/Off</li>
+        <li><kbd>F</kbd>: Launch Fireworks Show</li>
+        <li><kbd>ESC</kbd>: Exit Active View</li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="loader">
+    <div class="bokeh" aria-hidden="true"></div>
+    <div class="stage">
+      <svg class="wheel-wrap" viewBox="0 0 220 232" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Loading">
+        <!-- support frame (static) -->
+        <g stroke-linecap="round">
+          <line x1="110" y1="110" x2="80" y2="214" stroke="#6b5b8a" stroke-width="3" />
+          <line x1="110" y1="110" x2="140" y2="214" stroke="#6b5b8a" stroke-width="3" />
+          <line x1="62" y1="214" x2="158" y2="214" stroke="#4a3f63" stroke-width="4" />
+        </g>
+        <circle cx="110" cy="214" r="4" fill="#6b5b8a" />
+
+        <!-- spinning wheel -->
+        <g class="spin">
+          <circle cx="110" cy="110" r="82" stroke="rgba(255,210,150,0.9)" stroke-width="2.5" />
+          <circle cx="110" cy="110" r="74" stroke="rgba(255,160,120,0.22)" stroke-width="1" />
+          <g stroke="rgba(255,200,150,0.35)" stroke-width="1.5">
+            <line x1="110" y1="110" x2="110" y2="28" />
+            <line x1="110" y1="110" x2="167.98" y2="52.02" />
+            <line x1="110" y1="110" x2="192" y2="110" />
+            <line x1="110" y1="110" x2="167.98" y2="167.98" />
+            <line x1="110" y1="110" x2="110" y2="192" />
+            <line x1="110" y1="110" x2="52.02" y2="167.98" />
+            <line x1="110" y1="110" x2="28" y2="110" />
+            <line x1="110" y1="110" x2="52.02" y2="52.02" />
+          </g>
+          <g fill="#ffd9a0">
+            <circle class="rim-light" cx="110" cy="28" r="3" style="animation-delay:0s" />
+            <circle class="rim-light" cx="167.98" cy="52.02" r="3" style="animation-delay:0.22s" />
+            <circle class="rim-light" cx="192" cy="110" r="3" style="animation-delay:0.45s" />
+            <circle class="rim-light" cx="167.98" cy="167.98" r="3" style="animation-delay:0.68s" />
+            <circle class="rim-light" cx="110" cy="192" r="3" style="animation-delay:0.9s" />
+            <circle class="rim-light" cx="52.02" cy="167.98" r="3" style="animation-delay:1.12s" />
+            <circle class="rim-light" cx="28" cy="110" r="3" style="animation-delay:1.35s" />
+            <circle class="rim-light" cx="52.02" cy="52.02" r="3" style="animation-delay:1.58s" />
+          </g>
+          <circle cx="110" cy="110" r="9" fill="#ffd9a0" />
+          <circle cx="110" cy="110" r="4" fill="#7a6a4a" />
+        </g>
+
+        <!-- gondolas (orbit, stay upright) -->
+        <g class="cabin" style="--a0:0deg">
+          <line x1="110" y1="110" x2="110" y2="116" stroke="rgba(255,210,150,0.7)" stroke-width="1.5" />
+          <rect x="102" y="116" width="16" height="12" rx="3" fill="#2a2140" stroke="rgba(255,200,140,0.85)" stroke-width="1.5" />
+          <circle cx="110" cy="113" r="2" fill="#ffd9a0" />
+        </g>
+        <g class="cabin" style="--a0:60deg">
+          <line x1="110" y1="110" x2="110" y2="116" stroke="rgba(255,210,150,0.7)" stroke-width="1.5" />
+          <rect x="102" y="116" width="16" height="12" rx="3" fill="#2a2140" stroke="rgba(255,200,140,0.85)" stroke-width="1.5" />
+          <circle cx="110" cy="113" r="2" fill="#ffd9a0" />
+        </g>
+        <g class="cabin" style="--a0:120deg">
+          <line x1="110" y1="110" x2="110" y2="116" stroke="rgba(255,210,150,0.7)" stroke-width="1.5" />
+          <rect x="102" y="116" width="16" height="12" rx="3" fill="#2a2140" stroke="rgba(255,200,140,0.85)" stroke-width="1.5" />
+          <circle cx="110" cy="113" r="2" fill="#ffd9a0" />
+        </g>
+        <g class="cabin" style="--a0:180deg">
+          <line x1="110" y1="110" x2="110" y2="116" stroke="rgba(255,210,150,0.7)" stroke-width="1.5" />
+          <rect x="102" y="116" width="16" height="12" rx="3" fill="#2a2140" stroke="rgba(255,200,140,0.85)" stroke-width="1.5" />
+          <circle cx="110" cy="113" r="2" fill="#ffd9a0" />
+        </g>
+        <g class="cabin" style="--a0:240deg">
+          <line x1="110" y1="110" x2="110" y2="116" stroke="rgba(255,210,150,0.7)" stroke-width="1.5" />
+          <rect x="102" y="116" width="16" height="12" rx="3" fill="#2a2140" stroke="rgba(255,200,140,0.85)" stroke-width="1.5" />
+          <circle cx="110" cy="113" r="2" fill="#ffd9a0" />
+        </g>
+        <g class="cabin" style="--a0:300deg">
+          <line x1="110" y1="110" x2="110" y2="116" stroke="rgba(255,210,150,0.7)" stroke-width="1.5" />
+          <rect x="102" y="116" width="16" height="12" rx="3" fill="#2a2140" stroke="rgba(255,200,140,0.85)" stroke-width="1.5" />
+          <circle cx="110" cy="113" r="2" fill="#ffd9a0" />
+        </g>
+      </svg>
+
+      <div class="title">LUNA PARK</div>
+      <div class="subtitle">3D Amusement Park</div>
+      <div class="bar"><div class="bar-fill" id="loaderBar"></div></div>
+      <div class="status"><b id="loaderPct">0</b>% · <span id="loaderMsg">warming up the lights</span></div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var loader = document.getElementById('loader');
+      var bar = document.getElementById('loaderBar');
+      var pct = document.getElementById('loaderPct');
+      var msg = document.getElementById('loaderMsg');
+
+      // drifting bokeh fair-lights
+      var colors = ['#ffcf8a', '#ff8fc4', '#8fd3ff', '#ffe6a3', '#c79bff'];
+      var bokeh = loader.querySelector('.bokeh');
+      for (var i = 0; i < 14; i++) {
+        var s = 6 + Math.random() * 26;
+        var d = document.createElement('i');
+        d.style.left = (Math.random() * 100) + '%';
+        d.style.top = (Math.random() * 100) + '%';
+        d.style.width = d.style.height = s + 'px';
+        d.style.background = colors[i % colors.length];
+        d.style.animationDuration = (5 + Math.random() * 6) + 's, ' + (2 + Math.random() * 3) + 's';
+        d.style.animationDelay = (-Math.random() * 6) + 's, ' + (-Math.random() * 4) + 's';
+        bokeh.appendChild(d);
+      }
+
+      // eased faux progress that finishes when the scene signals ready
+      var msgs = ['warming up the lights', 'raising the ferris wheel', 'painting the sky',
+                  'tuning the carousel', 'almost there'];
+      var p = 0, cap = 92, done = false, mi = 0, lastMsg = 0;
+      function set(v) { bar.style.width = v.toFixed(1) + '%'; pct.textContent = Math.round(v); }
+      function tick(t) {
+        if (done) return;
+        p += (cap - p) * 0.018;
+        set(p);
+        if (t - lastMsg > 1500 && mi < msgs.length - 1) { msg.textContent = msgs[++mi]; lastMsg = t; }
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(function (t) { lastMsg = t; requestAnimationFrame(tick); });
+
+      function finish() {
+        if (done) return;
+        done = true;
+        loader.classList.remove('hidden'); // cancel the premature fade so 100% is visible
+        msg.textContent = 'ready';
+        var start = performance.now(), from = p;
+        (function fin() {
+          var k = Math.min(1, (performance.now() - start) / 420);
+          set(from + (100 - from) * k);
+          if (k < 1) { requestAnimationFrame(fin); return; }
+          bar.style.width = '100%';
+          pct.textContent = '100';
+          setTimeout(function () { loader.classList.add('hidden'); }, 450); // hold full bar, then fade
+        })();
+      }
+
+      // main.js adds .hidden when the scene is ready; intercept it to finish the bar first.
+      new MutationObserver(function () {
+        if (!done && loader.classList.contains('hidden')) finish();
+      }).observe(loader, { attributes: true, attributeFilter: ['class'] });
+    })();
+  </script>
+
+  <script>
+    (function() {
+      const windInput = document.getElementById('wind');
+      const timeInput = document.getElementById('timeOfDay');
+      const autoTime = document.getElementById('autoTime');
+      const autoStateVal = document.getElementById('autoStateVal');
+      const lightColor = document.getElementById('lightColor');
+      const colorHexVal = document.getElementById('colorHexVal');
+      const colorPillPreview = document.getElementById('colorPillPreview');
+      
+      function updateSlider(input, min, max) {
+        if (!input) return;
+        const val = parseFloat(input.value);
+        const pct = ((val - min) / (max - min)) * 100;
+        input.style.setProperty('--value-percent', `${pct}%`);
+      }
+
+      // RequestAnimationFrame loop for real-time UI synchronization
+      // (covers programmatic changes from the main JS cycle)
+      function syncUI() {
+        if (windInput) updateSlider(windInput, 0, 3);
+        if (timeInput) updateSlider(timeInput, 0, 24);
+        if (autoTime && autoStateVal) {
+          autoStateVal.textContent = autoTime.checked ? 'ON' : 'OFF';
+        }
+        if (lightColor && colorHexVal && colorPillPreview) {
+          const val = lightColor.value;
+          colorHexVal.textContent = val.toUpperCase();
+          colorPillPreview.style.backgroundColor = val;
+        }
+        document.querySelectorAll('.ride-speed-slider').forEach((s) => updateSlider(s, 0.2, 1.5));
+        requestAnimationFrame(syncUI);
+      }
+      requestAnimationFrame(syncUI);
+
+      // Toggle HUD collapse state
+      const hud = document.getElementById('hud');
+      const hudTitle = document.getElementById('hudTitle');
+      if (hud && hudTitle) {
+        hudTitle.addEventListener('click', () => {
+          hud.classList.toggle('collapsed');
+        });
+      }
+    })();
+  </script>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
